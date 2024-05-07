@@ -13,6 +13,7 @@ class Pix2StructVisionTower(nn.Module):
         self.vision_tower_name = vision_tower
         self.select_layer = args.mm_vision_select_layer
         self.select_feature = getattr(args, 'mm_vision_select_feature', 'cls_patch')
+        self.max_patches = getattr(args, 'mm_vision_max_patches', 1024)
 
         if not delay_load:
             self.load_model()
@@ -26,7 +27,7 @@ class Pix2StructVisionTower(nn.Module):
             print('{} is already loaded, `load_model` called again, skipping.'.format(self.vision_tower_name))
             return
 
-        self.image_processor = Pix2StructImageProcessor.from_pretrained(self.vision_tower_name)
+        self.image_processor = Pix2StructImageProcessor.from_pretrained(self.vision_tower_name, is_vqa=False, max_patches=self.max_patches)
         self.vision_tower = Pix2StructVisionModel.from_pretrained(self.vision_tower_name, device_map=device_map)
         self.vision_tower.requires_grad_(False)
 
