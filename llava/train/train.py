@@ -713,9 +713,23 @@ class LazySupervisedDataset(Dataset):
                         result.paste(pil_img, ((height - width) // 2, 0))
                         return result
                 image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
-                image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                image = processor.preprocess(image, return_tensors='pt')  # ['pixel_values'][0]
+                if 'pixel_values' in image:
+                    image = image['pixel_values'][0]
+                else:
+                    image = {
+                        'flattened_patches': image['flattened_patches'][0],
+                        'attention_mask': image['attention_mask'][0],
+                    }
             else:
-                image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                image = processor.preprocess(image, return_tensors='pt')  # ['pixel_values'][0]
+                if 'pixel_values' in image:
+                    image = image['pixel_values'][0]
+                else:
+                    image = {
+                        'flattened_patches': image['flattened_patches'][0],
+                        'attention_mask': image['attention_mask'][0],
+                    }
             sources = preprocess_multimodal(
                 copy.deepcopy([e["conversations"] for e in sources]),
                 self.data_args)
@@ -765,10 +779,16 @@ class DataCollatorForSupervisedDataset(object):
 
         if 'image' in instances[0]:
             images = [instance['image'] for instance in instances]
-            if all(x is not None and x.shape == images[0].shape for x in images):
+            if  isinstance(images[0], torch.Tensor) and all(x is not None and x.shape == images[0].shape for x in images):
                 batch['images'] = torch.stack(images)
+            elif hasattr(images[0], 'keys') and 'flattened_patches' in images[0].keys():
+                batch['images'] = {
+                    'flattened_patches': torch.stack([x['flattened_patches'] for x in images]),
+                    'attention_mask': torch.stack([x['attention_mask'] for x in images]),
+                }
             else:
                 batch['images'] = images
+                print('Processing failed')
 
         return batch
 

@@ -12,7 +12,7 @@ class Pix2StructVisionTower(nn.Module):
 
         self.vision_tower_name = vision_tower
         self.select_layer = args.mm_vision_select_layer
-        self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+        self.select_feature = getattr(args, 'mm_vision_select_feature', 'cls_patch')
 
         if not delay_load:
             self.load_model()
@@ -32,14 +32,8 @@ class Pix2StructVisionTower(nn.Module):
 
         self.is_loaded = True
 
-        print('Pix2StructVisionTower loaded')
-        import code 
-        code.interact(local={**locals(), **globals()})
-
     def feature_select(self, image_forward_outs):
         image_features = image_forward_outs.hidden_states[self.select_layer]
-        import code 
-        code.interact(local=locals())
         if self.select_feature == 'patch':
             image_features = image_features[:, 1:]
         elif self.select_feature == 'cls_patch':
@@ -53,12 +47,14 @@ class Pix2StructVisionTower(nn.Module):
         if type(images) is list:
             image_features = []
             for image in images:
-                image_forward_out = self.vision_tower(image.to(device=self.device, dtype=self.dtype).unsqueeze(0), output_hidden_states=True)
-                image_feature = self.feature_select(image_forward_out).to(image.dtype)
+                image = {k: v.to(device=self.device, dtype=self.dtype).unsqueeze(0) for k, v in image.items()}
+                image_forward_out = self.vision_tower(**image, output_hidden_states=True)
+                image_feature = self.feature_select(image_forward_out).to(image['flattened_patches'].dtype)
                 image_features.append(image_feature)
         else:
-            image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
-            image_features = self.feature_select(image_forward_outs).to(images.dtype)
+            images = {k: v.to(device=self.device, dtype=self.dtype) for k, v in images.items()}
+            image_forward_outs = self.vision_tower(**images, output_hidden_states=True)
+            image_features = self.feature_select(image_forward_outs).to(images['flattened_patches'].dtype)
 
         return image_features
 

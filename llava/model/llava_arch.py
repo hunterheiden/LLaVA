@@ -150,10 +150,11 @@ class LlavaMetaForCausalLM(ABC):
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
-        if type(images) is list or images.ndim == 5:
-            if type(images) is list:
-                images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
-            concat_images = torch.cat([image for image in images], dim=0)
+        if type(images) is list or (hasattr(images, 'ndim') and images.ndim == 5):
+            if not hasattr(images[0], 'keys'):
+                if type(images) is list:
+                    images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
+                concat_images = torch.cat([image for image in images], dim=0)
             image_features = self.encode_images(concat_images)
             split_sizes = [image.shape[0] for image in images]
             image_features = torch.split(image_features, split_sizes, dim=0)

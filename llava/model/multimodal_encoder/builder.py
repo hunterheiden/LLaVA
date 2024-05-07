@@ -12,7 +12,7 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
             return CLIPVisionTowerS2(vision_tower, args=vision_tower_cfg, **kwargs)
         else:
             return CLIPVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
-    elif vision_tower.startswith("pix2struct"):
+    elif 'pix2struct' in vision_tower:
         return Pix2StructVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
 
     raise ValueError(f'Unknown vision tower: {vision_tower}')
