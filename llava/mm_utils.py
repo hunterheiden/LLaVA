@@ -176,6 +176,8 @@ def process_images(images, image_processor, model_cfg):
             image = process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
             new_images.append(image)
     else:
+        if 'Pix2Struct' in image_processor.image_processor_type:
+            return image_processor(images, return_tensors='pt')
         return image_processor(images, return_tensors='pt')['pixel_values']
     if all(x.shape == new_images[0].shape for x in new_images):
         new_images = torch.stack(new_images, dim=0)

@@ -749,8 +749,22 @@ class LazySupervisedDataset(Dataset):
             data_dict['image'] = image
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
-            crop_size = self.data_args.image_processor.crop_size
-            data_dict['image'] = torch.zeros(3, crop_size['height'], crop_size['width'])
+            if hasattr(self.data_args.image_processor, 'crop_size'):
+                crop_size = self.data_args.image_processor.crop_size
+                data_dict['image'] = torch.zeros(3, crop_size['height'], crop_size['width'])
+            else:
+                # crop_size = {'height': 224, 'width': 224}
+                # data_dict['image'] = {
+                #     'flattened_patches': torch.zeros(1, 1024, 768),
+                # }
+                image = Image.new('RGB', (224, 224), color='white')
+                image = self.data_args.image_processor.preprocess(image, return_tensors='pt')
+                image = {
+                    'flattened_patches': image['flattened_patches'][0],
+                    'attention_mask': image['attention_mask'][0],
+                }
+                data_dict['image'] = image
+            
         return data_dict
 
 
@@ -861,6 +875,7 @@ def train(attn_implementation=None):
             **bnb_model_from_pretrained_args
         )
     model.config.use_cache = False
+    model.generation_config.do_sample = True
 
     if model_args.freeze_backbone:
         model.model.requires_grad_(False)
